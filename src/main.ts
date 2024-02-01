@@ -5,14 +5,19 @@ import 'dotenv/config';
 import helmet from 'helmet';
 import compression from 'compression';
 import { ValidationPipe } from '@nestjs/common';
-import { UsersModule } from './users/users.module';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   //create nest application
-  const app = await NestFactory.create(UsersModule);
+  const app = await NestFactory.create(AppModule);
 
   //Use validation pipe
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   //Enable Logging
   app.use(morgan('dev'));
