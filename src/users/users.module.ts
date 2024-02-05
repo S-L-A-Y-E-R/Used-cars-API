@@ -7,7 +7,7 @@ import { UsersService } from './users.service';
 import { AuthService } from './auth.service';
 import { User } from './users.entity';
 import { CurrentUserInterceptor } from './interceptors/current-user.interceptor';
-import { GoogleStrategy } from './google/google.strategy';
+import { GoogleStrategy } from './google.strategy';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User]), JwtModule.register({})],

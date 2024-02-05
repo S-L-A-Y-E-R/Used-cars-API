@@ -22,7 +22,7 @@ import { SigninUserDto } from './dtos/signinUsers.dto';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { CurrentUser } from './decorators/create-user.decorator';
 import { User } from './users.entity';
-import { GoogleOAuthGuard } from './google/google-oauth.guard';
+import { GoogleOAuthGuard } from '../guards/google-oauth.guard';
 
 @Controller()
 export class UsersController {
