@@ -12,7 +12,7 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import Email from 'src/utils/email-utils/email';
+import Email from 'src/utils/email';
 
 @Injectable()
 export class AuthService {
@@ -63,14 +63,14 @@ export class AuthService {
     return await hash(password, 10);
   };
 
-  createPasswordResetCode() {
+  createCode() {
     const resetCode = crypto.randomBytes(32).toString('hex');
-    const hashedResetCode = crypto
+    const hashedCode = crypto
       .createHash('sha256')
       .update(resetCode)
       .digest('hex');
-    const resetCodeExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    return { resetCode, hashedResetCode, resetCodeExpiry };
+    const codeExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    return { resetCode, hashedCode, codeExpiry };
   }
 
   passowrdChangedAfter(tokenTimestamp: number, user: User) {
@@ -86,7 +86,38 @@ export class AuthService {
 
   async signup(body: CreateUserDto) {
     body.password = await this.hashPassword(body.password);
-    const user = this.usersRepository.create(body);
+    const { resetCode, hashedCode, codeExpiry } = this.createCode();
+    const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${resetCode}`;
+    const user = this.usersRepository.create({
+      ...body,
+      verificationToken: hashedCode,
+      verificationTokenExpiry: codeExpiry,
+    });
+    try {
+      await new Email(user, verificationURL).sendVerification();
+    } catch (err) {
+      throw new InternalServerErrorException(
+        'There was an error sending the verification email. Try again later!',
+      );
+    }
+    await this.usersRepository.save(user);
+  }
+
+  async verifyEmail(verificationToken: string) {
+    const hashedVerificationToken = crypto
+      .createHash('sha256')
+      .update(verificationToken)
+      .digest('hex');
+    const user = await this.usersRepository.findOneBy({
+      verificationToken: hashedVerificationToken,
+      verificationTokenExpiry: MoreThan(new Date()),
+    });
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired verification token');
+    }
+    user.verified = true;
+    user.verificationToken = null;
+    user.verificationTokenExpiry = null;
     return await this.usersRepository.save(user);
   }
 
@@ -94,6 +125,8 @@ export class AuthService {
     const user = await this.usersRepository.findOneBy({ email: body.email });
     if (!user || !(await compare(body.password, user.password))) {
       throw new UnauthorizedException('Invalid email or password');
+    } else if (!user.verified) {
+      throw new UnauthorizedException('Email not verified');
     }
     return user;
   }
@@ -103,19 +136,18 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    const { resetCode, hashedResetCode, resetCodeExpiry } =
-      this.createPasswordResetCode();
+    const { resetCode, hashedCode, codeExpiry } = this.createCode();
     const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetCode}`;
     try {
       await new Email(user, resetURL).sendPasswordReset();
     } catch (err) {
       throw new InternalServerErrorException(
-        'There was an error sending the email. Try again later!',
+        'There was an error sending the reset password email. Try again later!',
       );
     }
     await this.usersRepository.update(user.id, {
-      passwordResetToken: hashedResetCode,
-      passwordResetTokenExpiry: resetCodeExpiry,
+      passwordResetToken: hashedCode,
+      passwordResetTokenExpiry: codeExpiry,
     });
   }
 

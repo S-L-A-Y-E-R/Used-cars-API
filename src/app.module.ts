@@ -18,7 +18,7 @@ import { Report } from './reports/reports.entity';
       database: process.env.POSTGRES_DATABASE,
       entities: [User, Report],
       ssl: true,
-      synchronize: true,
+      synchronize: process.env.NODE_ENV === 'development',
     }),
     UsersModule,
     ReportsModule,

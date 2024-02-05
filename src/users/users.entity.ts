@@ -27,11 +27,20 @@ export class User {
   @Column()
   password: string;
 
+  @Column({ default: false })
+  verified: boolean;
+
   @Column({ nullable: true })
   passwordResetToken: string;
 
   @Column({ nullable: true })
   passwordResetTokenExpiry: Date;
+
+  @Column({ nullable: true })
+  verificationToken: string;
+
+  @Column({ nullable: true })
+  verificationTokenExpiry: Date;
 
   @Column({ nullable: true })
   passwordChangedAt: Date;

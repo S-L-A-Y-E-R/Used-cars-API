@@ -10,7 +10,9 @@ import {
   Req,
   UseGuards,
   UnauthorizedException,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response, Request } from 'express';
 import { UsersService } from './users.service';
 import { AuthService } from './auth.service';
@@ -23,6 +25,7 @@ import { AuthGuard } from 'src/guards/auth.guard';
 import { CurrentUser } from './decorators/create-user.decorator';
 import { User } from './users.entity';
 import { GoogleOAuthGuard } from '../guards/google-oauth.guard';
+import { FileUpload } from './decorators/upload-file.decorator';
 
 @Controller()
 export class UsersController {
@@ -32,12 +35,21 @@ export class UsersController {
   ) {}
 
   @Post('auth/signup')
+  async signup(@Body() body: CreateUserDto) {
+    await this.authService.signup(body);
+    return {
+      status: 'success',
+      message: 'User created successfully!',
+    };
+  }
+
+  @Post('auth/verify-email/:verificationToken')
   @Serialize(UserDto)
-  async signup(
-    @Body() body: CreateUserDto,
+  async verifyEmail(
+    @Param('verificationToken') verificationToken: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const user = await this.authService.signup(body);
+    const user = await this.authService.verifyEmail(verificationToken);
     const accessToken = this.authService.createJWT(user.id, 'access');
     const refreshToken = this.authService.createJWT(user.id, 'refresh');
     this.authService.createAndSendCookies(accessToken, refreshToken, res);
@@ -95,6 +107,18 @@ export class UsersController {
       status: 'success',
       message: 'Password changed successfully!',
     };
+  }
+
+  @UseGuards(AuthGuard)
+  @Serialize(UserDto)
+  @Patch('auth/change-profile-photo')
+  @UseInterceptors(FileInterceptor('photo'))
+  changeProfilePhoto(
+    @FileUpload()
+    file: Express.Multer.File,
+    @CurrentUser() user: User,
+  ) {
+    return this.usersService.changeProfilePhoto(file, user);
   }
 
   @Post('auth/refresh-token')

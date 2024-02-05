@@ -14,6 +14,9 @@ export class UserDto {
   photo: string;
 
   @Expose()
+  verified: boolean;
+
+  @Expose()
   createdAt: Date;
 
   @Expose()
