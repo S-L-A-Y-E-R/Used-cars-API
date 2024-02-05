@@ -3,9 +3,11 @@ import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.int
 import * as morgan from 'morgan';
 import 'dotenv/config';
 import helmet from 'helmet';
-import compression from 'compression';
+import * as compression from 'compression';
 import { ValidationPipe } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { DatabaseExceptionFilter } from './exception-filters/database-exception.filter';
 
 async function bootstrap() {
   //create nest application
@@ -18,6 +20,12 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  //Use database exception filter
+  app.useGlobalFilters(new DatabaseExceptionFilter());
+
+  //Use cookie parser
+  app.use(cookieParser());
 
   //Enable Logging
   app.use(morgan('dev'));
